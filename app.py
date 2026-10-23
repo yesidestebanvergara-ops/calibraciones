@@ -11,7 +11,7 @@ import os
 import tempfile
 from datetime import datetime
 import qrcode  
-from streamlit_pdf_viewer import pdf_viewer
+import fitz # PyMuPDF para renderizar vista previa perfecta
 
 # ==========================================
 # 0. CONFIGURACIÓN INICIAL Y ESTADO (SESSION)
@@ -691,7 +691,7 @@ if archivo_excel:
         if not faltantes:
             opciones_equipos = df['código interno'].astype(str) + " - " + df['equipo'].astype(str)
             
-            col1, col2 = st.columns([1, 1.2])
+            col1, col2 = st.columns([1, 1.3])
             
             with col1:
                 equipo_seleccionado = st.selectbox("Seleccionar equipo para auditar (Vista Previa):", opciones_equipos)
@@ -734,7 +734,7 @@ if archivo_excel:
                     st.download_button("⬇️ Descargar Archivo ZIP", data=zip_buffer.getvalue(), file_name="Metrologia_Exalud_Premium.zip", mime="application/zip", type="primary", use_container_width=True)
                         
             with col2:
-                st.write("### 📄 Visualizador de Documentos")
+                st.write("### 📄 Visualizador de Documentos en Alta Calidad")
                 pdf_preview = generar_pdf_profesional(
                     datos_equipo, 
                     num_cert=random.randint(80000, 99999), 
@@ -742,7 +742,7 @@ if archivo_excel:
                     firma_path=firma_tmp_path
                 )
                 
-                # Botón de descarga individual para el equipo seleccionado
+                # Botón de descarga individual
                 nombre_archivo_individual = f"{str(datos_equipo.get('equipo', 'Equipo')).replace('/', '-')}_{str(datos_equipo.get('serie', 'SN')).replace('/', '-')}.pdf"
                 st.download_button(
                     label="📥 Descargar este Certificado Individual",
@@ -752,8 +752,14 @@ if archivo_excel:
                     use_container_width=True
                 )
                 
-                # Visor de PDF optimizado y sin recortes
-                pdf_viewer(input=pdf_preview, width=580, height=750)
+                # Renderizado perfecto de páginas PDF a imágenes usando PyMuPDF (Sin recortes ni bloqueos)
+                doc = fitz.open(stream=pdf_preview, filetype="pdf")
+                for page_num in range(len(doc)):
+                    page = doc.load_page(page_num)
+                    pix = page.get_pixmap(dpi=150)
+                    img_bytes = pix.tobytes("png")
+                    st.image(img_bytes, caption=f"Página {page_num + 1} de {len(doc)}", use_container_width=True)
+                doc.close()
             
             if firma_tmp_path and os.path.exists(firma_tmp_path):
                 try: os.remove(firma_tmp_path)
