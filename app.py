@@ -691,7 +691,7 @@ if archivo_excel:
         if not faltantes:
             opciones_equipos = df['código interno'].astype(str) + " - " + df['equipo'].astype(str)
             
-            col1, col2 = st.columns([1, 2])
+            col1, col2 = st.columns([1, 1.2])
             
             with col1:
                 equipo_seleccionado = st.selectbox("Seleccionar equipo para auditar (Vista Previa):", opciones_equipos)
@@ -734,15 +734,26 @@ if archivo_excel:
                     st.download_button("⬇️ Descargar Archivo ZIP", data=zip_buffer.getvalue(), file_name="Metrologia_Exalud_Premium.zip", mime="application/zip", type="primary", use_container_width=True)
                         
             with col2:
-                st.write("### 📄 Visualizador de Documentos (Live Preview)")
+                st.write("### 📄 Visualizador de Documentos")
                 pdf_preview = generar_pdf_profesional(
                     datos_equipo, 
                     num_cert=random.randint(80000, 99999), 
                     nombre_ejecutor=nombre_metrologo, 
                     firma_path=firma_tmp_path
                 )
-                # Visualizador seguro compatible con la nube (Soluciona el bloqueo de Chrome)
-                pdf_viewer(input=pdf_preview, width=700)
+                
+                # Botón de descarga individual para el equipo seleccionado
+                nombre_archivo_individual = f"{str(datos_equipo.get('equipo', 'Equipo')).replace('/', '-')}_{str(datos_equipo.get('serie', 'SN')).replace('/', '-')}.pdf"
+                st.download_button(
+                    label="📥 Descargar este Certificado Individual",
+                    data=pdf_preview,
+                    file_name=nombre_archivo_individual,
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+                
+                # Visor de PDF optimizado y sin recortes
+                pdf_viewer(input=pdf_preview, width=580, height=750)
             
             if firma_tmp_path and os.path.exists(firma_tmp_path):
                 try: os.remove(firma_tmp_path)
