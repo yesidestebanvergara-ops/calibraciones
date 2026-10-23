@@ -4,4 +4,4 @@ matplotlib
 fpdf
 qrcode[pil]
 openpyxl
-streamlit-pdf-viewer
+pymupdf
