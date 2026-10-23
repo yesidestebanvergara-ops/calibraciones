@@ -11,13 +11,13 @@ import os
 import tempfile
 from datetime import datetime
 import qrcode  
+from streamlit_pdf_viewer import pdf_viewer
 
 # ==========================================
 # 0. CONFIGURACIÓN INICIAL Y ESTADO (SESSION)
 # ==========================================
 st.set_page_config(page_title="Exalud - División de Metrología", layout="wide")
 
-# Diccionario categorizado con los datos reales de los PDFs cargados
 if 'patrones_cfg' not in st.session_state:
     st.session_state['patrones_cfg'] = {
         'TEMPERATURA': {'desc': 'Termómetros y Termohigrómetros', 'equipo': 'TERMOHIGROMETRO PATRON', 'marca': 'UNI-T', 'cert': 'LP8605-25', 'fecha_calibracion': '28/04/2025'},
@@ -45,7 +45,7 @@ def simular_mediciones(datos_equipo):
     res_dict = {
         'tipo': tipo, 'es_multiparametro': False, 'es_bascula': False, 'es_ecg': False, 
         'es_espirometro': False, 'es_audiometro': False, 'parametros': [],
-        'patron': cfg['ELECTRICO'].copy() # Por defecto usa el eléctrico si no entra en ningún if
+        'patron': cfg['ELECTRICO'].copy()
     }
 
     if 'TERMOHIGRO' in tipo or 'TERMOHIGO' in tipo:
@@ -209,7 +209,6 @@ def crear_grafica_espirometria_curva():
         plt.close(fig)
         return tmp.name
 
-
 # ==========================================
 # 3. CLASE FPDF MEJORADA
 # ==========================================
@@ -248,7 +247,6 @@ class CertificadoProfesional(FPDF):
         self.set_font('Arial', 'I', 7.5)
         self.set_text_color(128, 128, 128)
         self.cell(0, 10, f'Página {self.page_no()} de {{nb}} | EXALUD S.A.S (NIT: 901128787-7) - Calle 19 # 3-16, Local 115, Barichara | Tel: 3237976148', 0, 0, 'C')
-
 
 def generar_pdf_profesional(datos_excel, num_cert=None, nombre_ejecutor="", firma_path=None):
     if not num_cert or num_cert == 8000 or str(num_cert).strip() == "":
@@ -642,7 +640,6 @@ def generar_pdf_profesional(datos_excel, num_cert=None, nombre_ejecutor="", firm
 
     return pdf_bytes
 
-
 # ==========================================
 # 4. INTERFAZ WEB STREAMLIT
 # ==========================================
@@ -670,18 +667,15 @@ with st.sidebar:
         for clave, valores in st.session_state['patrones_cfg'].items():
             st.markdown(f"<span style='color:#004080; font-weight:bold;'>{clave}</span> - *{valores['desc']}*", unsafe_allow_html=True)
             
-            # Fila 1: Equipo y Marca
             cols1 = st.columns(2)
             st.session_state['patrones_cfg'][clave]['equipo'] = cols1[0].text_input("Equipo Patrón", valores['equipo'], key=f"e_{clave}")
             st.session_state['patrones_cfg'][clave]['marca'] = cols1[1].text_input("Marca", valores['marca'], key=f"m_{clave}")
             
-            # Fila 2: Certificado y Fecha
             cols2 = st.columns(2)
             st.session_state['patrones_cfg'][clave]['cert'] = cols2[0].text_input("N° Certificado", valores['cert'], key=f"c_{clave}")
             st.session_state['patrones_cfg'][clave]['fecha_calibracion'] = cols2[1].text_input("Fecha Calibración", valores['fecha_calibracion'], key=f"f_{clave}")
             
             st.markdown("---")
-
 
 archivo_excel = st.file_uploader("📂 Cargar matriz maestra (.xlsx)", type=["xlsx", "xls"])
 
@@ -747,9 +741,8 @@ if archivo_excel:
                     nombre_ejecutor=nombre_metrologo, 
                     firma_path=firma_tmp_path
                 )
-                base64_pdf = base64.b64encode(pdf_preview).decode('utf-8')
-                pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800" type="application/pdf"></iframe>'
-                st.markdown(pdf_display, unsafe_allow_html=True)
+                # Visualizador seguro compatible con la nube (Soluciona el bloqueo de Chrome)
+                pdf_viewer(input=pdf_preview, width=700)
             
             if firma_tmp_path and os.path.exists(firma_tmp_path):
                 try: os.remove(firma_tmp_path)
