@@ -210,7 +210,7 @@ def crear_grafica_espirometria_curva():
         return tmp.name
 
 # ==========================================
-# 3. CLASE FPDF MEJORADA
+# 3. CLASES FPDF (CERTIFICADO Y STICKERS)
 # ==========================================
 class CertificadoProfesional(FPDF):
     def __init__(self, num_cert, qr_path=None):
@@ -640,6 +640,88 @@ def generar_pdf_profesional(datos_excel, num_cert=None, nombre_ejecutor="", firm
 
     return pdf_bytes
 
+def generar_hoja_stickers(datos_stickers):
+    """
+    Genera un PDF tamaño A4 con stickers de calibración miniatura.
+    Tamaño del sticker: 46 mm x 27 mm (4 columnas x 10 filas = 40 por hoja)
+    """
+    pdf = FPDF('P', 'mm', 'A4')
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=False)
+    
+    ancho_st = 46
+    alto_st = 27
+    margen_x = 10
+    margen_y = 10
+    espacio_x = 3
+    espacio_y = 3
+    
+    col = 0
+    fila = 0
+    
+    for st_data in datos_stickers:
+        x = margen_x + col * (ancho_st + espacio_x)
+        y = margen_y + fila * (alto_st + espacio_y)
+        
+        # Borde principal azul oscuro
+        pdf.set_draw_color(0, 51, 102)
+        pdf.set_line_width(0.3)
+        pdf.rect(x, y, ancho_st, alto_st)
+        
+        # Título EXALUD
+        pdf.set_xy(x, y + 2)
+        pdf.set_font('Arial', 'B', 9)
+        pdf.set_text_color(0, 51, 102)
+        pdf.cell(ancho_st, 4, 'EXALUD S.A.S', 0, 1, 'C')
+        
+        # Caja Verde CALIBRADO
+        pdf.set_fill_color(0, 204, 102) 
+        pdf.set_xy(x + 2, y + 7)
+        pdf.set_font('Arial', 'B', 7.5)
+        pdf.set_text_color(255, 255, 255)
+        pdf.cell(ancho_st - 4, 4.5, 'CALIBRADO', 0, 1, 'C', fill=True)
+        
+        # Campos de Texto
+        pdf.set_text_color(0, 51, 102)
+        pdf.set_font('Arial', 'B', 6)
+        
+        # Certificado
+        pdf.set_xy(x + 2, y + 13.5)
+        pdf.cell(17, 3.5, 'CERTIFICADO:', 0, 0, 'L')
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(24, 3.5, str(st_data['cert']), 0, 1, 'L')
+        pdf.set_draw_color(180, 180, 180) # Gris claro para simular punteado
+        pdf.set_line_width(0.2)
+        pdf.line(x + 19, y + 16.5, x + ancho_st - 2, y + 16.5)
+        
+        # Equipo
+        pdf.set_text_color(0, 51, 102)
+        pdf.set_xy(x + 2, y + 17.5)
+        pdf.cell(17, 3.5, 'EQUIPO:', 0, 0, 'L')
+        pdf.set_text_color(0, 0, 0)
+        eq_str = str(st_data['equipo']).upper()[:18] # Truncar para evitar desbordes
+        pdf.cell(24, 3.5, eq_str, 0, 1, 'L')
+        pdf.line(x + 19, y + 20.5, x + ancho_st - 2, y + 20.5)
+        
+        # Fecha Cal
+        pdf.set_text_color(0, 51, 102)
+        pdf.set_xy(x + 2, y + 21.5)
+        pdf.cell(17, 3.5, 'FECHA CAL.:', 0, 0, 'L')
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(24, 3.5, str(st_data['fecha']), 0, 1, 'L')
+        pdf.line(x + 19, y + 24.5, x + ancho_st - 2, y + 24.5)
+        
+        # Lógica de cuadrícula
+        col += 1
+        if col > 3: # Pasamos a la siguiente fila después de 4 columnas
+            col = 0
+            fila += 1
+            if fila > 9: # Pasamos a la siguiente hoja después de 10 filas
+                fila = 0
+                pdf.add_page()
+                
+    return pdf.output(dest='S').encode('latin-1', 'replace')
+
 # ==========================================
 # 4. INTERFAZ WEB STREAMLIT
 # ==========================================
@@ -704,11 +786,13 @@ if archivo_excel:
                 if st.button("🚀 Procesar Lote Completo", use_container_width=True):
                     total_equipos = len(df)
                     
-                    progress_text = "Generando estructura documental..."
+                    progress_text = "Generando estructura documental y stickers..."
                     my_bar = st.progress(0, text=progress_text)
                     
                     zip_buffer = io.BytesIO()
                     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                        
+                        lista_stickers = [] # Almacenar datos para la hoja de stickers
                         
                         for idx, fila in df.iterrows():
                             porcentaje = int(((idx + 1) / total_equipos) * 100)
@@ -724,35 +808,80 @@ if archivo_excel:
                                 firma_path=firma_tmp_path
                             )
                             
+                            # Formatear fecha para el sticker
+                            fecha_excel = d_fila.get('fecha de calibracion', d_fila.get('fecha calibracion', datetime.now()))
+                            if isinstance(fecha_excel, pd.Timestamp) or isinstance(fecha_excel, datetime):
+                                fecha_texto = fecha_excel.strftime('%d/%m/%Y')
+                            else:
+                                fecha_texto = str(fecha_excel) if str(fecha_excel).strip() != '' else datetime.now().strftime('%d/%m/%Y')
+                                
+                            # Agregar a lista general de stickers
+                            lista_stickers.append({
+                                'cert': num_cert,
+                                'equipo': d_fila.get('equipo', 'N/A'),
+                                'fecha': fecha_texto
+                            })
+                            
                             equipo_limpio = str(d_fila.get('equipo', 'Equipo')).replace("/", "-").strip()
                             sede_limpia = str(d_fila.get('sede', 'Sin Sede')).replace("/", "-").strip()
                             ruta_en_zip = f"{sede_limpia}/{equipo_limpio} - {sede_limpia}.pdf"
                             
                             zip_file.writestr(ruta_en_zip, pdf_bytes)
                     
-                    st.success(f"¡Lote finalizado! {total_equipos} certificados generados con éxito.")
+                        # Generar hoja final con todos los stickers y adjuntar al ZIP
+                        pdf_stickers_lote = generar_hoja_stickers(lista_stickers)
+                        zip_file.writestr("00_Stickers_Calibracion_Lote.pdf", pdf_stickers_lote)
+                    
+                    st.success(f"¡Lote finalizado! {total_equipos} certificados y su hoja de stickers generados con éxito.")
                     st.download_button("⬇️ Descargar Archivo ZIP", data=zip_buffer.getvalue(), file_name="Metrologia_Exalud_Premium.zip", mime="application/zip", type="primary", use_container_width=True)
                         
             with col2:
                 st.write("### 📄 Visualizador de Documentos en Alta Calidad")
+                cert_aleatorio = random.randint(80000, 99999)
                 pdf_preview = generar_pdf_profesional(
                     datos_equipo, 
-                    num_cert=random.randint(80000, 99999), 
+                    num_cert=cert_aleatorio, 
                     nombre_ejecutor=nombre_metrologo, 
                     firma_path=firma_tmp_path
                 )
                 
-                # Botón de descarga individual
-                nombre_archivo_individual = f"{str(datos_equipo.get('equipo', 'Equipo')).replace('/', '-')}_{str(datos_equipo.get('serie', 'SN')).replace('/', '-')}.pdf"
-                st.download_button(
-                    label="📥 Descargar este Certificado Individual",
-                    data=pdf_preview,
-                    file_name=nombre_archivo_individual,
-                    mime="application/pdf",
-                    use_container_width=True
-                )
+                # Formatear fecha para sticker individual
+                fecha_excel = datos_equipo.get('fecha de calibracion', datos_equipo.get('fecha calibracion', datetime.now()))
+                if isinstance(fecha_excel, pd.Timestamp) or isinstance(fecha_excel, datetime):
+                    fecha_texto = fecha_excel.strftime('%d/%m/%Y')
+                else:
+                    fecha_texto = str(fecha_excel) if str(fecha_excel).strip() != '' else datetime.now().strftime('%d/%m/%Y')
+                    
+                # Generar sticker para el equipo seleccionado
+                sticker_individual = generar_hoja_stickers([{
+                    'cert': cert_aleatorio,
+                    'equipo': datos_equipo.get('equipo', 'N/A'),
+                    'fecha': fecha_texto
+                }])
                 
-                # Renderizado perfecto de páginas PDF a imágenes usando PyMuPDF (Sin recortes ni bloqueos)
+                nombre_archivo_individual = f"{str(datos_equipo.get('equipo', 'Equipo')).replace('/', '-')}_{str(datos_equipo.get('serie', 'SN')).replace('/', '-')}.pdf"
+                
+                cols_descarga = st.columns(2)
+                with cols_descarga[0]:
+                    st.download_button(
+                        label="📥 Descargar Certificado",
+                        data=pdf_preview,
+                        file_name=nombre_archivo_individual,
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                with cols_descarga[1]:
+                    st.download_button(
+                        label="🏷️ Descargar Sticker",
+                        data=sticker_individual,
+                        file_name=f"Sticker_{nombre_archivo_individual}",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                
+                st.write("---")
+                
+                # Renderizado perfecto de páginas PDF a imágenes usando PyMuPDF
                 doc = fitz.open(stream=pdf_preview, filetype="pdf")
                 for page_num in range(len(doc)):
                     page = doc.load_page(page_num)
