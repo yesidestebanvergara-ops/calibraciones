@@ -1,7 +1,8 @@
 streamlit
 pandas
 matplotlib
-fpdf
+numpy
+fpdf2
 qrcode[pil]
 openpyxl
 pymupdf
