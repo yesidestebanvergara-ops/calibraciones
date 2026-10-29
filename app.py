@@ -1451,17 +1451,28 @@ if archivo_excel:
                                 }
                             )
 
+                            # Nomenclatura del archivo PDF: Equipo - Código - Área/Ubicación - Certificado
+                            equipo_limpio = limpiar_nombre_archivo(
+                                d_fila.get("equipo", "EQUIPO")
+                            )
                             cod_interno = limpiar_nombre_archivo(
                                 d_fila.get("código interno", "S-COD")
                             )
-                            ubicacion = limpiar_nombre_archivo(
-                                d_fila.get("ubicación", "S-UBIC")
+                            area_limpia = limpiar_nombre_archivo(
+                                d_fila.get(
+                                    "área",
+                                    d_fila.get(
+                                        "area",
+                                        d_fila.get("ubicación", "S-AREA"),
+                                    ),
+                                )
                             )
                             sede_limpia = limpiar_nombre_archivo(
                                 d_fila.get("sede", "Sin Sede")
                             )
 
-                            ruta_en_zip = f"{sede_limpia}/{cod_interno} - {ubicacion}.pdf"
+                            nombre_pdf = f"{equipo_limpio} - {cod_interno} - {area_limpia} - CERT {num_cert}.pdf"
+                            ruta_en_zip = f"{sede_limpia}/{nombre_pdf}"
                             zip_file.writestr(ruta_en_zip, pdf_bytes)
 
                         pdf_stickers_lote = generar_hoja_stickers(
@@ -1519,13 +1530,23 @@ if archivo_excel:
                     ]
                 )
 
+                # Nomenclatura del archivo individual: Equipo - Código - Área/Ubicación - Certificado
+                eq_ind = limpiar_nombre_archivo(
+                    datos_equipo.get("equipo", "EQUIPO")
+                )
                 cod_ind = limpiar_nombre_archivo(
                     datos_equipo.get("código interno", "S-COD")
                 )
-                ubic_ind = limpiar_nombre_archivo(
-                    datos_equipo.get("ubicación", "S-UBIC")
+                area_ind = limpiar_nombre_archivo(
+                    datos_equipo.get(
+                        "área",
+                        datos_equipo.get(
+                            "area", datos_equipo.get("ubicación", "S-AREA")
+                        ),
+                    )
                 )
-                nombre_archivo_individual = f"{cod_ind} - {ubic_ind}.pdf"
+
+                nombre_archivo_individual = f"{eq_ind} - {cod_ind} - {area_ind} - CERT {cert_aleatorio}.pdf"
 
                 cols_descarga = st.columns(2)
                 with cols_descarga[0]:
