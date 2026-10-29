@@ -3,6 +3,7 @@ import os
 import random
 import re
 import tempfile
+import zipfile  # <-- Importación agregada para corregir el error
 from datetime import datetime
 
 import fitz  # PyMuPDF
@@ -1448,7 +1449,6 @@ if archivo_excel:
                                 }
                             )
 
-                            # Naming con Código Interno y Ubicación
                             cod_interno = limpiar_nombre_archivo(
                                 d_fila.get("código interno", "S-COD")
                             )
