@@ -3,7 +3,7 @@ import os
 import random
 import re
 import tempfile
-import zipfile  # <-- Importación agregada para corregir el error
+import zipfile
 from datetime import datetime
 
 import fitz  # PyMuPDF
@@ -61,14 +61,14 @@ if "patrones_cfg" not in st.session_state:
             "equipo": "SIMULADOR DE PACIENTE SPO2",
             "marca": "FLUKE BIOMEDICAL",
             "cert": "OX-7712-25",
-            "fecha_calibracion": "15/08/2027",
+            "fecha_calibracion": "15/08/2026",
         },
         "ECG": {
             "desc": "Electrocardiógrafos",
             "equipo": "SIMULADOR DE ECG",
             "marca": "FLUKE BIOMEDICAL",
             "cert": "ECG9042-25",
-            "fecha_calibracion": "10/08/2027",
+            "fecha_calibracion": "10/08/2026",
         },
         "FLUJO": {
             "desc": "Espirómetros",
@@ -1197,7 +1197,8 @@ def generar_pdf_profesional(
     pdf.set_text_color(128, 128, 128)
     pdf.cell(190, 6, "*** FIN DEL CERTIFICADO ***", 0, 1, "C")
 
-    pdf_bytes = pdf.output(dest="S").encode("latin-1", "replace")
+    # En fpdf2 pdf.output() retorna bytes / bytearray directamente
+    pdf_bytes = bytes(pdf.output())
 
     for r in rutas_a_limpiar:
         try:
@@ -1276,7 +1277,8 @@ def generar_hoja_stickers(datos_stickers):
                 fila = 0
                 pdf.add_page()
 
-    return pdf.output(dest="S").encode("latin-1", "replace")
+    # En fpdf2 pdf.output() retorna bytes / bytearray directamente
+    return bytes(pdf.output())
 
 
 # ==========================================
