@@ -115,6 +115,34 @@ def limpiar_nombre_archivo(texto):
     return re.sub(r"\s+", " ", cadena)
 
 
+def obtener_fecha_texto(datos_dict):
+    """Extrae y formatea la fecha del diccionario soportando múltiples nombres de columna en Excel."""
+    posibles_claves = [
+        "fecha",
+        "fecha de calibracion",
+        "fecha calibracion",
+        "fecha_calibracion",
+        "fecha ejecucion",
+        "fecha de ejecucion",
+    ]
+
+    for clave in posibles_claves:
+        if clave in datos_dict:
+            val = datos_dict[clave]
+            if val is not None and str(val).strip() != "" and str(val).upper() != "N/A":
+                if isinstance(val, (pd.Timestamp, datetime)):
+                    return val.strftime("%d/%m/%Y")
+                try:
+                    dt = pd.to_datetime(str(val).strip(), dayfirst=True)
+                    if not pd.isna(dt):
+                        return dt.strftime("%d/%m/%Y")
+                except:
+                    pass
+                return str(val).strip()
+
+    return datetime.now().strftime("%d/%m/%Y")
+
+
 # ==========================================
 # 1. MOTOR DE SIMULACIÓN Y MATRIZ TÉCNICA
 # ==========================================
@@ -638,20 +666,7 @@ def generar_pdf_profesional(
     tipo_equipo = str(datos_excel.get("equipo", "N/A")).upper()
     sede = str(datos_excel.get("sede", "N/A")).upper()
 
-    fecha_excel = datos_excel.get(
-        "fecha de calibracion",
-        datos_excel.get("fecha calibracion", datetime.now()),
-    )
-    if isinstance(fecha_excel, pd.Timestamp) or isinstance(
-        fecha_excel, datetime
-    ):
-        fecha_texto = fecha_excel.strftime("%d/%m/%Y")
-    else:
-        fecha_texto = (
-            str(fecha_excel)
-            if str(fecha_excel).strip() != ""
-            else datetime.now().strftime("%d/%m/%Y")
-        )
+    fecha_texto = obtener_fecha_texto(datos_excel)
 
     ejecutor_final = str(
         datos_excel.get(
@@ -1426,22 +1441,7 @@ if archivo_excel:
                                 firma_path=firma_tmp_path,
                             )
 
-                            fecha_excel = d_fila.get(
-                                "fecha de calibracion",
-                                d_fila.get(
-                                    "fecha calibracion", datetime.now()
-                                ),
-                            )
-                            if isinstance(
-                                fecha_excel, pd.Timestamp
-                            ) or isinstance(fecha_excel, datetime):
-                                fecha_texto = fecha_excel.strftime("%d/%m/%Y")
-                            else:
-                                fecha_texto = (
-                                    str(fecha_excel)
-                                    if str(fecha_excel).strip() != ""
-                                    else datetime.now().strftime("%d/%m/%Y")
-                                )
+                            fecha_texto = obtener_fecha_texto(d_fila)
 
                             lista_stickers.append(
                                 {
@@ -1505,20 +1505,7 @@ if archivo_excel:
                     firma_path=firma_tmp_path,
                 )
 
-                fecha_excel = datos_equipo.get(
-                    "fecha de calibracion",
-                    datos_equipo.get("fecha calibracion", datetime.now()),
-                )
-                if isinstance(fecha_excel, pd.Timestamp) or isinstance(
-                    fecha_excel, datetime
-                ):
-                    fecha_texto = fecha_excel.strftime("%d/%m/%Y")
-                else:
-                    fecha_texto = (
-                        str(fecha_excel)
-                        if str(fecha_excel).strip() != ""
-                        else datetime.now().strftime("%d/%m/%Y")
-                    )
+                fecha_texto = obtener_fecha_texto(datos_equipo)
 
                 sticker_individual = generar_hoja_stickers(
                     [
